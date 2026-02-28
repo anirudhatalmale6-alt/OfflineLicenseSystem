@@ -13,11 +13,7 @@ require_once __DIR__ . '/generate_license.php';
 echo "=== License System Round-Trip Test ===\n\n";
 
 // Step 1: Generate keys if they don't exist
-$keyDir = __DIR__ . '/keys';
-$privateKeyPath = $keyDir . '/private_key.pem';
-$publicKeyPath = $keyDir . '/public_key.pem';
-
-if (!file_exists($privateKeyPath)) {
+if (!file_exists(PRIVATE_KEY_PATH)) {
     echo "Generating RSA key pair...\n";
     include __DIR__ . '/generate_keys.php';
     echo "\n";
@@ -39,7 +35,7 @@ $testLicenseData = [
 ];
 
 $outputPath = __DIR__ . '/test_license.lic';
-$licenseContent = generate_license($testLicenseData, $privateKeyPath, $outputPath);
+$licenseContent = generate_license($testLicenseData, PRIVATE_KEY_PATH, $outputPath);
 
 echo "License file saved to: $outputPath\n\n";
 echo "--- License File Contents ---\n";
@@ -59,7 +55,7 @@ $signature = base64_decode($signatureBase64);
 echo "Decoded license data: $dataString\n\n";
 
 // Load public key
-$publicKey = file_get_contents($publicKeyPath);
+$publicKey = file_get_contents(PUBLIC_KEY_PATH);
 $pubKeyResource = openssl_pkey_get_public($publicKey);
 
 // Verify signature

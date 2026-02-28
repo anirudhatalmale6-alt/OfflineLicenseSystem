@@ -11,8 +11,9 @@
  *   call generate_license() directly from your own code.
  */
 
-// Configuration
-$privateKeyPath = __DIR__ . '/keys/private_key.pem';
+// Configuration - private key is stored outside web root
+require_once __DIR__ . '/config.php';
+$privateKeyPath = PRIVATE_KEY_PATH;
 
 /**
  * Generate a signed license file.

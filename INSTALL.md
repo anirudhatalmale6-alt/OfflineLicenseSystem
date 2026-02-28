@@ -6,6 +6,7 @@ This system provides offline software licensing with RSA digital signatures:
 - **PHP server** generates and signs license files
 - **C# desktop app** verifies license files using the embedded public key
 - No internet connection needed for verification (offline)
+- Private key stored **outside** the public web root for security
 
 ## Architecture
 
@@ -14,6 +15,7 @@ This system provides offline software licensing with RSA digital signatures:
 
   1. generate_keys.php
      -> Creates RSA key pair
+     -> Private key stored OUTSIDE web root
 
   2. generate_license.php
      -> Signs license data    ------> license.lic file
@@ -28,33 +30,54 @@ This system provides offline software licensing with RSA digital signatures:
 
 ## Part 1: PHP Server Setup (GoDaddy)
 
+### Directory Structure
+
+```
+/home/username/                        <-- your home directory
+  license_keys/                        <-- PRIVATE KEY here (outside web root!)
+    private_key.pem                    (auto-created, KEEP SECRET)
+    .htaccess                          (auto-created, blocks access)
+  public_html/                         <-- web root
+    licensing/                         <-- upload PHP files here
+      config.php                       (configuration - set paths here)
+      generate_keys.php                (run once to create keys)
+      generate_license.php             (license generator with web UI)
+      test_roundtrip.php               (test script)
+      keys/                            (auto-created)
+        public_key.pem                 (auto-created, safe to share)
+        .htaccess                      (auto-created)
+```
+
 ### Files to Upload
 
-Upload the `php/` folder contents to your GoDaddy server:
-
-```
-your-site.com/
-  licensing/                  (create this folder)
-    generate_keys.php         (run once to create keys)
-    generate_license.php      (license generator with web UI)
-    keys/                     (auto-created, holds RSA keys)
-      .htaccess               (auto-created, blocks web access)
-      private_key.pem         (auto-created, KEEP SECRET)
-      public_key.pem          (auto-created, embed in C# app)
-```
+Upload all files from the `php/` folder to a folder on your server (e.g., `public_html/licensing/`):
+- `config.php` - Configuration (set your private key path here)
+- `generate_keys.php` - One-time key generation
+- `generate_license.php` - License generator with web form
+- `test_roundtrip.php` - Test script
 
 ### Step-by-Step Setup
 
 1. **Upload files** to a folder on your server (e.g., `/licensing/`)
 
-2. **Generate RSA keys** - visit in your browser:
+2. **Edit `config.php`** to set the correct private key directory path:
+   ```php
+   // Change 'username' to your GoDaddy hosting username:
+   define('PRIVATE_KEY_DIR', '/home/username/license_keys');
+   ```
+   The auto-detect default usually works, but verify the path is correct.
+
+3. **Generate RSA keys** - visit in your browser:
    ```
    https://your-site.com/licensing/generate_keys.php
    ```
-   This creates the `keys/` folder with your key pair.
+   This creates:
+   - Private key at `/home/username/license_keys/private_key.pem` (outside web root)
+   - Public key at `/licensing/keys/public_key.pem` (local reference)
+
    **Copy the public key displayed** - you'll need it for C#.
 
-3. **Generate licenses** - visit:
+4. **Generate licenses** - visit:
    ```
    https://your-site.com/licensing/generate_license.php
    ```
@@ -63,10 +86,12 @@ your-site.com/
 
 ### Security Notes
 
-- The `keys/` folder is protected by `.htaccess` (no web access)
+- Private key is stored OUTSIDE the public web root - cannot be accessed via URL
+- Both key directories are protected by `.htaccess` (extra safety layer)
 - NEVER share or expose `private_key.pem`
 - The `public_key.pem` is safe to embed in your C# app
 - Consider adding HTTP Basic Auth or your own login to protect the generator page
+- Optionally delete `generate_keys.php` from the server after initial setup
 
 ---
 
@@ -184,8 +209,8 @@ This generates keys, creates a test license, and verifies it all in one step.
 
 ## Workflow Summary
 
-1. **One-time setup:** Run `generate_keys.php` on your server
+1. **One-time setup:** Run `generate_keys.php` on your server (creates keys)
 2. **For each customer:** Use `generate_license.php` to create a signed `.lic` file
 3. **Customer receives:** The `.lic` file (via email, download, etc.)
 4. **Customer's app:** Places `license.lic` alongside the .exe, app verifies on startup
-5. **Security:** Without the private key, nobody can forge a valid license file
+5. **Security:** Private key is outside web root. Without it, nobody can forge a valid license.
